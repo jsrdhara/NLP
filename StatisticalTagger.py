@@ -1,235 +1,162 @@
 # coding: utf-8
-# author: jayarama kapil sridhara
+# author :jayarama kapil sridhara
 
+# 're' is the regular expression package for python, we need to import this package to parse the input file
 import re
-import io
-from collections import Counter
+
+# Please import NLTK package since I am using this package to identify the POS (parts of speech) tags in the input file 
+from nltk.data import load
+
+# Default dictionary provided from collections module for hasing etc..
 from collections import defaultdict
-from collections import OrderedDict
 
-# Cleans entire brown corpus and returns an output file with just word and their tags.
-def CleanFile(In,Out):
-    Regex = re.compile(r"([A-Z$]+ [\w]+)")
-    with open(In , 'r+') as f:
-        mylist = []
-        sentence = ' '
-        for line in f:
-            if  re.search('(TOP END_OF_TEXT_UNIT)',line):
-                sentence = sentence + '\n'
+# Counter funciton is imported to count the number of items of a list or dictionary 
+from collections import Counter
+
+# Loading the University of Pennsylvania tagset
+tagdict = load('help/tagsets/upenn_tagset.pickle')
+
+# forming a list of tags
+tag_list = tagdict.keys()
+
+# The tag list looks as below:
+
+#dict_keys(['LS', 'TO', 'VBN', "''", 'WP', 'UH', 'VBG', 'JJ', 'VBZ', '--', 'VBP', 'NN', 'DT', 'PRP', ':', 'WP$', 'NNPS', 'PRP$', 'WDT', '(', ')', '.', ',', '``', '$', 'RB', 'RBR', 'RBS', 'VBD', 'IN', 'FW', 'RP', 'JJR', 'JJS', 'PDT', 'MD', 'VB', 'WRB', 'NNP', 'EX', 'NNS', 'SYM', 'CC', 'CD', 'POS'])
+
+
+def CleanFile():
+    
+    """
+    This function is used to clean the Input Brown snapshot file
+    
+    """
+    # The final list is declared as a global variable which consists of list of words and tags. It is declared Global since it will be accessed outside fo this function 
+    global final_list
+    
+    # The below code segment converts the input file and forms chunks of sentence lists in mylist
+    
+    with open('SnapshotBROWN.pos.all.txt' , 'r+') as f:
+        data = f.readlines()
+        mylist = []  
+        other_list = []                                                               
+        for lines in data:                                                                                                       
+            if lines == '     (. .))\n':
+                mylist.append(other_list)
+                other_list = []
             else:
-                tagWord = ' '.join(Regex.findall(line))
-                sentence = sentence +' '+ tagWord 
-    with open(Out,mode ='a') as outfile:
-        outfile.write(sentence)
+                other_list.append(lines)
+    #
+    # The below code segement parses the input brown file and removes these literals: [^-()\n.`':,$ ]+ from the input file and forms a pre final list which contains cleaned list of each sentence of the brown file
+        out_list = []
+        pre_final_list=[]
+        for i in mylist:
+            p =re.findall("[^-()\n.`':,$ ]+",(' '.join(i)))
+            q = []
+            for j in range(0,len(p)):
+                if p[j] in tag_list:
+                    q.extend([p[j],p[j+1]])
+            pre_final_list.append(q)
+    #
+    # The below code segment is to write sentences to the brown clean file 
+        file = open('BROWN-clean.pos.txt', 'w')
+        for i in pre_final_list:
+            file.write(' '.join(i))
+            file.write('\n')
+        file.close()
+        
+    #
+    # final list is the global variable which is declared above it consists  of all the tokens of words and tags which is used in Evaluate  function calculating the accuracy
+        final_list = [item for sublist in pre_final_list for item in sublist]
 
-# This function returns a Hash of Hash Dictionary with each word, the possible tag of the word and their counts--> {word:{tag1:count1,tag2:count2..}}
+        
 def HashOfHash():
+    
+    """
+    This function is used for Hashing of words and thier tags which looks as follows : {'word':{'tag1':count,'tag2':count}}
+    
+    """
     global hash_dict
-    with open(TrainingOutputfile, 'r') as f:
+    
+    # The below code segment hashes words and tags to their counts using default dictionary 
+    # The output of this function looks as follows
+    # {'The': {'DT': 24}, 'Fulton': {'NNP': 14}, 'County': {'NNP': 7}, 'Grand': {'NNP': 1}, 'Jury': {'NNP': 1}, 'said': {'VBD': 18}, 'Friday': {'NNP': 3}......
+    
+    with open('BROWN-clean.pos.txt', 'r+') as f:
         data = f.read()
         data = data.split()
         word_dict= defaultdict(lambda: [])
-        for i in range(0,len(data)):
-            if i%2!=0:
-                word_dict[data[i]].append(data[i-1])
-    hash_dict = {k: dict(Counter(v)) for k, v in word_dict.items()}  
+        for i in range(0,len(data)-1):
+            if data[i]  in tag_list:
+                word_dict[data[i+1]].append(data[i])
+        hash_dict = {k: dict(Counter(v)) for k, v in word_dict.items()}
+        return ('Hash of Hashes of words and tags is given by: {} '.format(hash_dict))
 
 
-# Using hash of hashes function to train a baseline lexicalized statistical tagger on the entire BROWN corpus.
-def Statistical_tagger():
-    global trained_tagger
-    trained_tagger = {}
-    for word,taglist in hash_dict.items():
-        frequent_tag = sorted(taglist.items(), key=lambda x: x[1],reverse=True)[0][0]
-        trained_tagger[word] = frequent_tag
+def FrequentTags():
+    
+    """
+    This functions returns top 20 frequent tags
+    
+    """
+    global top_list
+    HashOfHash()
+    
+    # The below code segment forms a dictionary of tags and thier values and sorts them which looks as follows : : [('NN', 261), ('DT', 191), ('NNP',188), ('IN', 185), ('NNS', 92), ('JJ', 75), ('VB', 73), ('VBD', 67), ('VBN', 54), ('TO', 39)......
+    
+    frequent_tags = defaultdict(int)
+    for dicts in hash_dict.values():
+        for i, j in dicts.items():
+            frequent_tags[i] += j
+    top_list= sorted(frequent_tags.items(), key=lambda kv: kv[1], reverse=True)
+    
+    return ('The top 20 Tags and their counts are given by: {}'.format(top_list[:20]))
 
 
-# Using the baseline lexicalized statistical tagger to tag all the words in the SnapshotBROWN file.
-def TagSnapshot():
-    global Evaluated_tags
-    global Original_tags
-    global Unknown_Words
-    with open(TestOutputFile, 'r') as f:
-        data = f.read()
-        data = data.split()
-        Original_tags = []
-        Evaluated_tags = []
-        Unknown_Words = []
-        for i in range(0,len(data)):
-            if i%2!=0:
-                if data[i] not in trained_tagger.keys():
-                    Unknown_Words.append(data[i])
-                    Evaluated_tags('TAG-NOT-FOUND')
-                else:
-                    Original_tags.append(data[i-1])
-                    Evaluated_tags.append(trained_tagger[data[i]])  
-
-# This funciton returns the evaluation parameters of the baseline lexicalised tagger such as accuracy,error and number of words that are not tagged
 def EvaluateTagger():
+    
+    """
+    This function is used to calculate the accuaracy after assigning the most frequent tag to all words.
+    
+    """
+    CleanFile()
+    FrequentTags()
+    
+    # The below code segment takes the most frequent tag and assigns it to all words and compares with the original list tags
+    # accuarcy = matched tags/total tags
+    # I got an accuracy of  17.193675889328063 after assigning 'NN' to all the words which is the most frequent tag
+    
+    MostFrequent_tag = top_list[0][0]
+    Evaluated_list = final_list
+    Original_tags=[]
+    Evaluated_tags =[]
+    for i in range(0,len(Evaluated_list)):
+        if Evaluated_list[i] in tag_list:
+            Original_tags.append(Evaluated_list[i])
+            Evaluated_tags.append(MostFrequent_tag)
+            Evaluated_list[i]=MostFrequent_tag     
     count = 0
     for i in range(0,len(Evaluated_tags)):
         if Evaluated_tags[i]==Original_tags[i]:
             count = count+1
-    accuracy = float(count*100)/len(Evaluated_tags)
-    print('The Performance  of Trained Tagger on Snapshot Brown file: ')
-    print(' ------------------------------------------------------- ')
-    print('The accuracy of the Tagger                 :    {}{}'.format(accuracy,'%'))
-    error = (100-accuracy)
-    print('The error of the Tagger                    :    {}{}'.format(error,'%'))
-    print('The number of words that are not tagged    :    {}  '.format(len(Unknown_Words)))
-    
-
-# This function adds few rules to handle unknown words for the base line lexicalised tagger
-def Tag_New_Words(word):
-
-    modals = ["can", "could", "may", "might", "will", "would", "shall", "should", "must"]
-    wh_determiner = ["what", "which", "whose", "whatever", "whichever"]
-    articles = ["a", "an", "the"]
-    personal_pronoun = ["I","me", "you", "he", "him", "she", "her", "it", "we", "us", "you", "they", "them"]
-    possessive_pronoun = ["mine", "yours", "his", "hers", "ours", "yours", "theirs"]
-    
-    if word.lower() in modals:
-        return "MD"
-    elif word.lower() in wh_determiner:
-        return "WDT"
-    elif word.lower() in articles:
-        return "DT"
-    elif (word or word.lower()) in personal_pronoun:
-        return "PP"
-    elif word.lower() in possessive_pronoun:
-        return "PP$"
-    elif word[len(word)-2:] == "ss":
-        return "NN"
-    elif word[len(word)-2:] == "ed":
-        return "VBN"
-    elif word[len(word)-3:] == "ing":
-        return "VBG"
-    elif word[len(word)-2:] == "ly":
-        return "BB"
-    elif word+"ly" in trained_tagger.keys():
-        return "JJ"
-    elif word[len(word)-2:] == "us":
-        return "JJ"
-    elif word[len(word)-3:] == "ble":
-        return "JJ"
-    elif word[len(word)-2:] == "ic":
-        return "JJ"
-    elif ((word[:2] == "un") and (word[2:] in trained_tagger.keys())):
-        return "JJ"
-    elif word[len(word)-3:] == "ive":
-        return "JJ"
-    elif word[len(word)-1:] == "s":
-        return "NNS"
-    elif word.isdigit():
-        return "CD"
-    elif word == "+" or word == "%" or word == "&":
-        return "SYM"
-    elif word == "{" or word == "(" or word == "[" or word == "<":
-        return "("
-    elif word == "}" or word == ")" or word == "]" or word == ">":
-        return ")"
-    elif word == "," or word == ";" or word == "-" or word == "-":
-        return ","
-    elif word == "." or word == "!" or word == "?":
-        return "."
-    elif word == '$' or word == '#' or word == ',':
-        return word
-    elif (word == "\"" or word == "\"" or word == '”' or word == '“' or word == '’' or word == "'" or word == "'" or word == '`' or word == '""' or word == "''" ):
-        return word
-    elif (word.isupper() and len(word)>2):
-        return "NNP"
-    elif (word[:1]).isupper() and len(word)>1 and (word[:2]).lower()!="wh" and (word[:2]).lower()!="th":
-        return "NNP"
-    else:
-        return "<NONE>"
-    
-
-# This function cleans the news article that is used for testing of lexicalised tagger with new rules added
-def CleanNewsArticle(In):
-    global text
-    with io.open(In,'r',encoding = 'utf-8') as f:
-        text = f.read()
-        text = re.findall(r"[\w]+|[^\s\w]", text)
-        text = [x.encode('UTF8') for x in text]
-        
-
-# This function Tags all the words,punctutations and others in the Newspaper article
-def TagNewsPaper():
-    global TagContent,Count_Total_Words, Count_Known_Words, Count_New_Words,Count_New_Words_Tagged, Count_New_Words_NotTagged
-    Count_Total_Words = len(text)
-    Count_Known_Words, Count_New_Words,Count_New_Words_Tagged, Count_New_Words_NotTagged = 0,0,0,0
-    TagContent = OrderedDict()
-    for word in text:
-        if word in trained_tagger.keys():
-            Count_Known_Words +=1
-            TagContent[word] = trained_tagger[word]
-        else:
-            Count_New_Words +=1
-            TagContent[word] = Tag_New_Words(word)
-            if TagContent[word] == "<NONE>":
-                Count_New_Words_NotTagged += 1
-            else:
-                Count_New_Words_Tagged +=1
+    accuracy = (count/len(Evaluated_tags))*100
+    return('The accuracy of the tagger is {}'.format(accuracy))
 
 
-# This function displays the words and tags of the Newspaper file by using the trained tagger with added rules               
-def DisplayNewspaperTags():
-    print('Tagging Words in Newspaper using New Tagger ')
-    for key,value in TagContent.items():
-        if key in trained_tagger.keys():
-            print("Word (Known-Tagged)            : %6s      %s"% (value, key))
-        
-        elif Tag_New_Words(key) != "<NONE>":
-            print("Word (UnKnown-Tagged)          : %6s      %s"% (value, key))
-            
-        elif Tag_New_Words(key) == "<NONE>":
-            print("Word (UnKnown-Not-Tagged)      : %6s      %s"% (value, key))
-
-
-# This fucntion prints the Performance metrics of the New Tagger with added rules.            
-def PerformanceNewTagger():
-    Percentile_Known_Words = float(Count_Known_Words*100)/Count_Total_Words
-    Percentile_New_Words = float(Count_New_Words*100)/Count_Total_Words
-    Percentile_New_Words_Tagged = float(Count_New_Words_Tagged*100)/Count_New_Words
-    Percentile_New_Words_Not_Tagged = float(Count_New_Words_NotTagged*100)/Count_New_Words
-    
-    print('The Performance of Trained Tagger on Newspaper file: ')
-    print(' ------------------------------------------------------- ')
-    print('Total Number of Words                             : {}'.format(Count_Total_Words))
-    
-    print('Tagged Words Known (percentile among all words)   : {} ({}%)'.format(Count_Known_Words,Percentile_Known_Words))
-
-    print('New Words(percentile among all words)             : {} ({}%)'.format(Count_New_Words,Percentile_New_Words))
-
-    print('Words Tagged(percentile among all new words)      : {} ({}%)'.format(Count_New_Words_Tagged,Percentile_New_Words_Tagged))
-
-    print('Words Could Not Tag (percentile in new words)     : {} ({}%)'.format(Count_New_Words_NotTagged,Percentile_New_Words_Not_Tagged))
-
-
-# Main function to run all the aove defined functions    
 def main():
     
-    global TrainingInputfile,TrainingOutputfile,TestInputFile,TestOutputFile,InputNewspaper
+    """
+    main function which runs all the above defined functions
     
-    TrainingInputfile = 'BROWN.pos.all'
-    TrainingOutputfile = 'CleanFullBrown.txt'
-    TestInputFile = 'SnapshotBROWN.pos.all.txt'
-    TestOutputFile = 'CleanSnapshot.txt'
-    InputNewspaper = 'Newspaper.txt'
-    
-    CleanFile(TrainingInputfile,TrainingOutputfile)
-    HashOfHash()
-    Statistical_tagger()
-    CleanFile(TestInputFile,TestOutputFile)
-    TagSnapshot()
-    EvaluateTagger()
-    print(' ------------------------------------------------------- ')
+    """
+    CleanFile()
+    print(HashOfHash())
     print('\n')
-    CleanNewsArticle(InputNewspaper)
-    TagNewsPaper()
-    DisplayNewspaperTags()
-    print(' ------------------------------------------------------- ')
+    print(FrequentTags())
     print('\n')
-    PerformanceNewTagger()
+    print(EvaluateTagger())
+
+    # Please place the brown snapshot txt file in the same folder as this code
+    # Login to the same directory folder of this code file
+    # and execute python JayaramaKapilSridhara_NLP_Assignment_2.py for executing and viewing the results
 
 main()
