@@ -6,10 +6,6 @@ from collections import defaultdict
 from collections import OrderedDict
 
 def CleanText(Inputfile):
-    """
-    This function cleans the input text file
-
-    """
     Regex = re.compile(r"([A-Z$]+ [\w]+)")
     with open(Inputfile , 'r+') as f:
         sentence = ''
@@ -22,10 +18,6 @@ def CleanText(Inputfile):
     return sentence
 
 def PureText(text):
-    """
-    This function extracts clean text from the input
-
-    """
     puretext =[]
     data = text.split()
     data = [word.lower() for word in data]
@@ -35,10 +27,6 @@ def PureText(text):
     return puretext
 
 def WordCounter(text):
-    """
-    This function builds words and its counts in a dictionary
-
-    """
     word_count= {}
     for i in range(len(text)):
         if text[i] in word_count:
@@ -48,17 +36,10 @@ def WordCounter(text):
     return OrderedDict(sorted(word_count.items(), key=operator.itemgetter(1), reverse=True))
 
 def bigrams(input_list):
-    """
-    This function builds bigrams from the input text
 
-    """
     return list(zip(input_list, input_list[1:]))
 
 def smoothed_bigram(word_count, bi_gram):
-    """
-    This function smooths the bigrams using zipfs law
-
-    """
     smoothed_bigram = {}
     voc_size = len(word_count)
     for bi_gram_u in bi_gram:
@@ -67,10 +48,6 @@ def smoothed_bigram(word_count, bi_gram):
     return smoothed_bigram
 
 def visualize_zip_f(word_count):
-    """
-    This function plots the graph of zips law
-
-    """
     title = "Frequency Distribution of Words"
     x_label = "Word Rank"
     y_label = "Frequency"
@@ -89,9 +66,6 @@ def visualize_zip_f(word_count):
     plt.show()
 
 def test_bigram(text):
-    """
-    This function builds bigrams for test input
-    """
     text = text.lower()
     text_splits = text.split(" ")
     
@@ -105,10 +79,6 @@ def test_bigram(text):
     return bigram_str
 
 def bigram_compare(bigram_str,bi_gram, word_count):
-    """
-    This function builds  bigram dictionary and smooth bigram dictionary
-
-    """
     bigram_dict = {}
     bigram_dict_smoothed = {}
     vocabulary_size = len(word_count)
@@ -128,19 +98,10 @@ def bigram_compare(bigram_str,bi_gram, word_count):
     return bigram_dict, bigram_dict_smoothed
 
 def ComapareBigrams(bigram_dict, bigram_dict_smoothed):
-    """
-    This function compares bigram dictionary and smooth bigram dictionary
-
-    """
     for pair in bigram_dict:
         print("%25s - Raw: %0.4f, Smoothed: %0.4f"% (pair, bigram_dict[pair], bigram_dict_smoothed[pair]))
 
 def main():
-    """
-    Main function
-
-    """
-
     Inputfile = 'SnapshotBROWN.pos.all.txt'
     text = CleanText(Inputfile)
     text = PureText(text)
@@ -156,5 +117,4 @@ def main():
     ComapareBigrams(raw_bigram, smoothed_bigram)
 
 if __name__== "__main__":
-
   main()
