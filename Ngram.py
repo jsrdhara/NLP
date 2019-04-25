@@ -25,6 +25,7 @@ from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
 
+
 def ReadJson(filename):
     with open(filename) as f:
         data = [json.loads(line) for line in f] 
@@ -33,8 +34,10 @@ def ReadJson(filename):
 def CleanText(text):
   return re.sub('\W+',' ', text)
 
+
 def Tokenize(text):
   return word_tokenize(text)
+
 
 def Stemmer(word_list):
   ps = PorterStemmer()
@@ -44,6 +47,7 @@ def Stemmer(word_list):
 def RemoveStopWords(word_list):
   word_list = list(filter(lambda word: word.lower() not in stopwords.words('english'), word_list))
   return word_list
+
 
 def Count(word_list):
   counts = dict()
