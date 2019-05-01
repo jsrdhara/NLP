@@ -21,6 +21,7 @@ def CleanFile(In,Out):
     with open(Out,mode ='a') as outfile:
         outfile.write(sentence)
 
+        
 def HashOfHash():
     global hash_dict
     with open(TrainingOutputfile, 'r') as f:
@@ -40,10 +41,9 @@ def Statistical_tagger():
         frequent_tag = sorted(taglist.items(), key=lambda x: x[1],reverse=True)[0][0]
         trained_tagger[word] = frequent_tag
 
+        
 def TagSnapshot():
-    global Evaluated_tags
-    global Original_tags
-    global Unknown_Words
+    global Evaluated_tags,Original_tags,Unknown_Words
     with open(TestOutputFile, 'r') as f:
         data = f.read()
         data = data.split()
@@ -136,7 +136,6 @@ def Tag_New_Words(word):
     else:
         return "<NONE>"
     
-
 def CleanNewsArticle(In):
     global text
     with io.open(In,'r',encoding = 'utf-8') as f:
@@ -144,8 +143,7 @@ def CleanNewsArticle(In):
         text = re.findall(r"[\w]+|[^\s\w]", text)
         text = [x.encode('UTF8') for x in text]
         
-
-
+        
 def TagNewsPaper():
     global TagContent,Count_Total_Words, Count_Known_Words, Count_New_Words,Count_New_Words_Tagged, Count_New_Words_NotTagged
     Count_Total_Words = len(text)
